@@ -1,0 +1,211 @@
+config terminal
+
+hostname LAB-GWN01
+banner motd x
+==========================================================================
+                              !!!!! WARNING !!!!!                            
+             Only authorized personnel can access this system.
+        The unauthorized access will be subject to a legal penalty.
+                              !!!!! WARNING !!!!!
+==========================================================================
+x
+
+
+
+
+prefix-set GGC-Prefix
+  1.111.6.0/26
+end-set
+!
+
+prefix-set GGC-Prefix-IPv6
+  2001:e60:e990:30::/64
+end-set
+!
+as-path-set LG-SK
+  ios-regex '.*3786.*|.*9318.*'
+end-set
+!
+
+
+route-policy Deny-BGP
+  drop
+end-policy
+!
+
+
+route-policy Static-BGP
+  if tag eq 555 then
+    set origin igp
+    set community (4766:555, 4766:9610)
+  elseif tag eq 5005 then
+    set origin igp
+    set community (4766:5005, 4766:9610)
+  else
+    drop
+  endif
+end-policy
+!
+
+
+route-policy Out-5G-GW-IPv6
+  if community matches-any (4766:5005, 4766:555) then
+    set next-hop self
+  else
+    drop
+  endif
+end-policy
+!
+route-policy Static-BGP-IPv6
+  if tag eq 555 then
+    set origin igp
+    set community (4766:555, 4766:6610)
+  elseif tag eq 5005 then
+    set origin igp
+    set community (4766:5005, 4766:6610)
+  else
+    drop
+  endif
+end-policy
+!
+route-policy In-Global-Platform
+  if destination in GGC-Prefix then
+    set community (4766:555, 4766:9610, no-export)
+  else
+    drop
+  endif
+end-policy
+!
+route-policy Out-Global-Platform
+  if community matches-every (4766:5005, 4766:9610) then
+    pass
+  else
+    drop  
+  endif
+end-policy
+!
+route-policy In-Global-Platform-IPv6
+  if destination in GGC-Prefix-IPv6 then
+    set community (4766:555, 4766:6610, no-export)
+  else
+    drop
+  endif
+end-policy
+!
+route-policy Out-Global-Platform-IPv6
+  if community matches-every (4766:5005, 4766:6610) then
+    pass
+  else
+    drop
+  endif
+end-policy
+!
+
+
+router static
+ address-family ipv4 unicast
+  0.0.0.0/0 61.78.49.241
+  0.0.0.0/0 211.246.101.228 220
+  0.0.0.0/0 211.246.101.229 220
+  1.111.6.0/23 Null0 tag 5005 description GGC_Summary
+  118.235.40.0/21 Null0 tag 5005
+  118.235.40.0/25 GigabitEthernet0/0/0/4 10.59.131.2 tag 555 description 5G_B2B_NAT_POOL
+  118.235.41.0/24 GigabitEthernet0/0/0/4 10.59.131.2 tag 555 description 5G_NAT_1_POOL
+  118.235.42.0/24 GigabitEthernet0/0/0/4 10.59.131.2 tag 555 description 5G_NAT_2_POOL
+  118.235.43.0/24 GigabitEthernet0/0/0/4 10.59.131.2 tag 555 description 5G_NAT_3_POOL
+  118.235.43.0/24 GigabitEthernet0/0/0/4 10.59.131.6 tag 555 description 5G_NAT_3_POOL
+  118.235.44.0/24 GigabitEthernet0/0/0/4 10.59.131.2 tag 555 description 5G_NAT_4_POOL
+ !
+ address-family ipv6 unicast
+  ::/0 2001:e60:e000:0:211:246:101:228 220
+  ::/0 2001:e60:e000:0:211:246:101:229 220
+  ::/0 GigabitEthernet0/0/0/0 2400::9610:112:174:254:62 100
+  ::/0 GigabitEthernet0/0/0/1 2400::9610:112:190:26:25
+  ::/0 GigabitEthernet0/0/0/2 2400::9610:112:190:24:25
+  2001:e60:c000::/36 Null0 tag 5005
+
+  2001:e60:c3a0::/46 GigabitEthernet0/0/0/4 2001:e60:e650:5101:10:59:131:2 tag 555 description 5G_UPF_2_IPv6_POOL
+  2001:e60:c3a4::/47 GigabitEthernet0/0/0/4 2001:e60:e650:5101:10:59:131:2 tag 555 description 5G_UPF_2_IPv6_POOL
+  2001:e60:c3a6::/48 GigabitEthernet0/0/0/4 2001:e60:e650:5101:10:59:131:2 tag 555 description 5G_UPF_2_IPv6_POOL
+  2001:e60:c3a7::/48 GigabitEthernet0/0/0/4 2001:e60:e650:5101:10:59:131:2 tag 555 description 5G_UPF_2_IPv6_POOL
+ !
+!
+
+
+
+
+router bgp 4766
+ nsr
+ bgp router-id 112.174.0.127
+ address-family ipv4 unicast
+  maximum-paths ibgp 16
+  redistribute static route-policy Static-BGP
+ !
+ address-family ipv6 unicast
+  maximum-paths ibgp 16
+  redistribute static route-policy Static-BGP-IPv6
+ !
+
+ neighbor-group 5G-GW
+  remote-as 4766
+  password clear new1234!
+  update-source Loopback0
+  address-family ipv4 unicast
+   route-policy Out-5G-GW out
+  !
+ !
+
+
+ neighbor-group 5G-GW-IPv6
+  remote-as 4766
+  password clear new1234!
+  update-source Loopback0
+  address-family ipv6 unicast
+   route-policy Out-5G-GW-IPv6 out
+  !
+ !
+ neighbor-group Global_Platform
+  remote-as 36040
+  password clear new1234!
+  session-open-mode passive-only
+  address-family ipv4 unicast
+   route-policy In-Global-Platform in
+   route-policy Out-Global-Platform out
+  !
+ !
+ neighbor-group Global_Platform_IPv6
+  remote-as 36040
+  password clear new1234!
+  session-open-mode passive-only
+  address-family ipv6 unicast
+   route-policy In-Global-Platform-IPv6 in
+   route-policy Out-Global-Platform-IPv6 out
+  !
+ !
+ neighbor 1.111.6.241
+  use neighbor-group Global_Platform
+  description ### ktmobile-pus1 ###
+ !
+ neighbor 112.174.0.128
+  use neighbor-group 5G-GW
+  description ## GWN128 ##
+ !
+
+ neighbor 2400::112:174:0:128
+  use neighbor-group 5G-GW-IPv6
+  description ## GWN128 ##
+ !
+ neighbor 2001:e60:e990:33:1:111:6:241
+  use neighbor-group Global_Platform_IPv6
+  description ### ktmobile-pus1 ###
+ !
+
+
+
+
+show config
+show commit change diff
+
+commit
+
+end
