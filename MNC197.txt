@@ -1,0 +1,162 @@
+config terminal
+
+hostname LAB-MNC197D
+interface Loopback0
+ ipv4 address 210.183.28.197 255.255.255.255
+!
+interface MgmtEth0/0/CPU0/0
+ shutdown
+!
+interface GigabitEthernet0/0/0/0
+ mtu 4484
+ description ### MNA199, He1/1/4 ###
+ ipv4 address 112.190.24.253 255.255.255.252
+ ipv4 unreachables disable
+ no shutdown
+!
+
+interface GigabitEthernet0/0/0/1
+ description ### M.Busan-GWN128(Te0/1/0/0);Pusan-MNA197D(Te7/2/40);02600009-2692;BSKORNET-FO-0001(139,140) ###
+ mtu 4484
+ ipv4 address 112.190.25.37 255.255.255.252
+ ipv4 unreachables disable
+ ipv6 address 2400::9610:112:190:25:25/126
+ ipv6 unreachables disable
+ load-interval 30
+ no shutdown
+!
+interface GigabitEthernet0/0/0/2
+ description ### LAB-GWN127(Gi0/0/0/1);Pusan-MNA197D(Te3/2/40);02600009-2712;BSKORNET-FO-0001(137,138) ###
+ mtu 4484
+ ipv4 address 112.190.24.37 255.255.255.252
+ ipv4 unreachables disable
+ ipv6 address 2400::9610:112:190:24:25/126
+ ipv6 unreachables disable
+ load-interval 30
+ no shutdown
+!
+route-policy Leaking
+  pass
+end-policy
+!
+route-policy Conn-BGP
+  set origin igp
+end-policy
+!
+route-policy Static-BGP
+  if tag eq 700 or tag eq 800 then
+    set origin igp
+  elseif tag eq 9260 then
+    set origin igp
+    set community (4766:9260)
+  elseif tag eq 250 then
+    set origin igp
+    set community (4766:250, 4766:9260)
+  elseif tag eq 270 then
+    set community (4766:250, 4766:270, 4766:9260)
+  elseif tag eq 299 then
+    set origin igp
+    set community (4766:299, 4766:9260)
+  else
+    drop
+  endif
+end-policy
+!
+router static
+ address-family ipv4 unicast
+  0.0.0.0/0 61.78.49.241
+  10.59.131.48/30 112.190.24.38
+  61.77.16.0/21 Null0 tag 9260
+ !
+ address-family ipv6 unicast
+  2001:e60:c000::/36 GigabitEthernet0/0/0/1 2400::9610:112:190:24:26 tag 5005 description 5G_BUSAN_IPv6_POOL
+  2001:e60:c000::/36 GigabitEthernet0/0/0/2 2400::9610:112:190:25:26 tag 5005 description 5G_BUSAN_IPv6_POOL
+ !
+!
+router isis 4766
+ net 49.9260.2101.8302.8197.00
+ nsf cisco
+ log adjacency changes
+ lsp-refresh-interval 2400
+ max-lsp-lifetime 3600
+ address-family ipv4 unicast
+  metric-style wide
+  spf-interval initial-wait 200
+  maximum-paths 16
+  propagate level 2 into level 1 route-policy Leaking
+  distance 70
+  maximum-redistributed-prefixes 100
+ !
+ interface Loopback0
+  passive
+  address-family ipv4 unicast
+  !
+ !
+ interface Loopback6
+  passive
+  address-family ipv4 unicast
+  !
+ !
+ interface Loopback10
+  passive
+  address-family ipv4 unicast
+  !
+ !
+ 
+ interface GigabitEthernet0/0/0/0
+  point-to-point
+  hello-padding disable
+  address-family ipv4 unicast
+   metric 5 level 1
+   metric 5 level 2
+  !
+ !
+
+ interface GigabitEthernet0/0/0/1
+  circuit-type level-2-only
+  point-to-point
+  hello-padding disable
+  address-family ipv4 unicast
+   metric 100 level 2
+  !
+ !
+ interface GigabitEthernet0/0/0/2
+  circuit-type level-2-only
+  point-to-point
+  hello-padding disable
+  address-family ipv4 unicast
+   metric 100 level 2
+  !
+ !
+!
+router bgp 4766
+ nsr
+ bgp router-id 210.183.28.197
+ ibgp policy out enforce-modifications
+ address-family ipv4 unicast
+  redistribute connected route-policy Conn-BGP
+  redistribute static route-policy Static-BGP
+ !
+ neighbor-group 5G-GW-Client
+  remote-as 4766
+  password new1234!
+  update-source Loopback0
+  address-family ipv4 unicast
+   route-reflector-client
+   next-hop-self
+  !
+ !
+ neighbor 112.174.0.127
+  use neighbor-group 5G-GW-Client
+  description ## GWN127 ##
+ !
+ neighbor 112.174.0.128
+  use neighbor-group 5G-GW-Client
+  description ## GWN128 ##
+ !
+! 
+!
+
+
+commit
+
