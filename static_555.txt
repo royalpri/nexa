@@ -1,0 +1,6 @@
+config
+router static
+ address-family ipv4 unicast
+  1.1.1.1/32 null0 tag 555
+   commit
+   end
