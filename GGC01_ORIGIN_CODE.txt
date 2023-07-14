@@ -1,6 +1,0 @@
-config
-route-policy Static-BGP
-pass
-end-policy
-commit
-end
