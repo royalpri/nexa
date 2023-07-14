@@ -1,0 +1,11 @@
+config
+route-policy Out-Global-Platform
+  if community matches-every (4766:5005, 4766:9610) then
+    pass
+    prepend as-path 4766 2
+  else
+    drop
+  endif
+end-policy
+commit
+end
