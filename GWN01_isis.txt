@@ -1,0 +1,44 @@
+config terminal
+
+
+router isis 4766
+ is-type level-2-only
+ net 49.9610.1121.7400.0127.00
+ nsf cisco
+ log adjacency changes
+ lsp-gen-interval secondary-wait 100
+ lsp-refresh-interval 2400
+ max-lsp-lifetime 3600
+ address-family ipv4 unicast
+  metric-style wide
+  metric 1000 level 2
+  spf-interval secondary-wait 100
+  maximum-paths 16
+  redistribute bgp 4766 route-policy Deny-BGP
+  maximum-redistributed-prefixes 100
+ !
+ interface Loopback0
+  passive
+  address-family ipv4 unicast
+  !
+ !
+ interface Loopback10
+  passive
+  address-family ipv4 unicast
+  !
+ !
+ interface GigabitEthernet0/0/0/0
+  circuit-type level-2-only
+  point-to-point
+  hello-padding disable
+  address-family ipv4 unicast
+   fast-reroute per-prefix
+   metric 100 level 2
+  !
+ !
+
+show config
+
+commit
+
+
