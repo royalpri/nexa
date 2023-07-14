@@ -1,0 +1,124 @@
+config terminal
+
+
+
+
+interface GigabitEthernet0/0/0/1
+ description ### M.Busan-GWN127(Te0/3/0/0);Pusan-MNA199(Te3/2/40);02600009-5298;BSKORNET-FO-0001(141,142) ###
+ mtu 4484
+ ipv4 address 112.190.26.38 255.255.255.252
+ ipv4 unreachables disable
+ ipv6 address 2400::9610:112:190:26:26/126
+ ipv6 unreachables disable
+ load-interval 30
+ no shutdown
+!
+interface GigabitEthernet0/0/0/2
+ description ### M.Busan-GWN127(Te0/1/0/0);Pusan-MNA197D(Te3/2/40);02600009-2712;BSKORNET-FO-0001(137,138) ###
+ mtu 4484
+ ipv4 address 112.190.24.38 255.255.255.252
+ ipv4 unreachables disable
+ ipv6 address 2400::9610:112:190:24:26/126
+ ipv6 unreachables disable
+ load-interval 30
+ no shutdown
+!
+
+
+
+
+as-path-set LG-SK
+  ios-regex '.*3786.*|.*9318.*'
+end-set
+!
+
+
+route-policy Deny-BGP
+  drop
+end-policy
+!
+route-policy In-KORNET
+  if as-path in LG-SK then
+    drop
+  elseif community matches-every (4766:5005, 4766:9610) then
+    drop
+  else
+    pass
+  endif
+end-policy
+!
+
+route-policy Out-KORNET
+  if community matches-every (4766:5005, 4766:9610) then
+    set next-hop 112.191.128.25
+  elseif destination in GGC-Prefix then
+    pass
+  else
+    drop
+  endif
+end-policy
+!
+
+route-policy In-KORNET-IPv6
+  if as-path in LG-SK then
+    drop
+  elseif community matches-every (4766:5005, 4766:6610) then
+    drop
+  else
+    pass
+  endif
+end-policy
+!
+
+
+
+router isis 4766
+ interface GigabitEthernet0/0/0/1
+  circuit-type level-2-only
+  point-to-point
+  hello-padding disable
+  address-family ipv4 unicast
+   fast-reroute per-prefix
+   metric 300 level 2
+  !
+ !
+ interface GigabitEthernet0/0/0/2
+  circuit-type level-2-only
+  point-to-point
+  hello-padding disable
+  address-family ipv4 unicast
+   fast-reroute per-prefix
+   metric 300 level 2
+  !
+ !
+
+
+
+router bgp 4766
+
+ neighbor-group KORNET
+  remote-as 4766
+  password clear new1234!
+  update-source Loopback0
+  address-family ipv4 unicast
+   route-policy In-KORNET in
+   route-policy Out-KORNET out
+  !
+ !
+
+
+ neighbor 210.183.28.197
+  use neighbor-group KORNET
+  description ## MNA197D ##
+ !
+ neighbor 210.183.28.199
+  use neighbor-group KORNET
+  description ## MNA199 ##
+ !
+
+
+commit
+
+end
+
+
