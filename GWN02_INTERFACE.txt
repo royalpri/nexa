@@ -1,0 +1,61 @@
+config terminal
+
+
+hostname LAB-GWN02
+banner motd x
+==========================================================================
+                              !!!!! WARNING !!!!!                            
+             Only authorized personnel can access this system.
+        The unauthorized access will be subject to a legal penalty.
+                              !!!!! WARNING !!!!!
+==========================================================================
+x
+
+ 
+interface Loopback0
+ description ## Router-ID ##
+ ipv4 address 112.174.0.128 255.255.255.255
+ ipv6 address 2400::112:174:0:128/128
+!
+interface Loopback10
+ description ### L10 Load-balancing ###
+ ipv4 address 112.191.128.26 255.255.255.248
+!
+
+
+interface GigabitEthernet0/0/0/0
+ description ### M.Busan-GWN128(Te0/1/0/43) - M.Busan-GWN127(Te0/1/0/43) ###
+ mtu 4484
+ ipv4 address 112.174.254.98 255.255.255.252
+ ipv4 unreachables disable
+ ipv6 address 2400::9610:112:174:254:62/126
+ ipv6 unreachables disable
+ load-interval 30
+ no shutdown
+!
+
+
+
+
+interface GigabitEthernet0/0/0/4
+ description ### LAB-GWN(Gi0/0/4) - GGC-L3_2(Gi0/0/4) ###
+ ipv4 address 1.111.7.240 255.255.255.254
+ ipv4 unreachables disable
+ ipv6 address 2001:e60:e990:37:1:111:7:240/127
+ ipv6 unreachables disable
+ load-interval 30
+ no shutdown
+!
+
+
+show config
+show commit change diff
+
+commit
+
+end
+
+
+
+
+             

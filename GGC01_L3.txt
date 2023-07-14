@@ -1,0 +1,84 @@
+config terminal
+
+hostname LAB_GGC01_L3
+
+
+
+interface GigabitEthernet0/0/0/4
+ description ### LAB-GWN(Gi0/0/4) - GGC-L3_1(Gi0/0/4) ###
+ ipv4 address 1.111.6.241 255.255.255.254
+ ipv4 unreachables disable
+ ipv6 address 2001:e60:e990:33:1:111:6:241/127
+ ipv6 unreachables disable
+ load-interval 30
+ no shutdown
+!
+
+route-policy Static-BGP
+  set origin igp
+end-policy
+!
+route-policy Static-BGP-IPv6
+  set origin igp
+end-policy
+!
+
+route-policy In-KT-GWN
+  pass
+end-policy
+!
+route-policy Out-KT-GWN
+  pass
+end-policy
+!
+router static
+ address-family ipv4 unicast
+  1.111.6.0/26 Null0
+ !
+ address-family ipv6 unicast
+  2001:e60:e990:30::/64 Null0
+ !
+!
+router bgp 36040
+ bgp router-id 1.111.6.1
+ address-family ipv4 unicast
+  maximum-paths ibgp 16
+  redistribute static route-policy Static-BGP
+
+ !
+ address-family ipv6 unicast
+  maximum-paths ibgp 16
+  redistribute static route-policy Static-BGP-IPv6
+ !
+ neighbor-group KT_GWN
+  remote-as 4766
+  password new1234!
+  address-family ipv4 unicast
+  !
+ !
+ neighbor-group KT_GWN_IPv6
+  remote-as 4766
+  password new1234!
+  address-family ipv6 unicast
+  !
+ !
+ neighbor 1.111.6.240
+  use neighbor-group KT_GWN
+  description ### LAB_GWN ###
+  address-family ipv4 unicast
+   route-policy In-KT-GWN in
+   route-policy Out-KT-GWN out
+  !
+ !
+ neighbor 2001:e60:e990:33:1:111:6:240
+  use neighbor-group KT_GWN_IPv6
+  description ### LAB_GWN ###
+  address-family ipv6 unicast
+   route-policy In-KT-GWN in
+   route-policy Out-KT-GWN out
+  !       
+ !
+!
+
+commit
+
