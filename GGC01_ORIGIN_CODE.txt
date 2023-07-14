@@ -1,0 +1,11 @@
+[GGC#1]
+
+config
+route-policy Static-BGP
+pass
+end-policy
+commit
+end
+
+[GWN#1]
+show bgp neighbor 1.111.6.241 routes 
